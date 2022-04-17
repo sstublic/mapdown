@@ -1,0 +1,32 @@
+{
+  "root": "packages/mapdown-core",
+  "sourceRoot": "packages/mapdown-core/src",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/mapdown-core",
+        "main": "packages/mapdown-core/src/index.ts",
+        "tsConfig": "packages/mapdown-core/tsconfig.lib.json",
+        "assets": ["packages/mapdown-core/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/mapdown-core/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nrwl/jest:jest",
+      "outputs": ["coverage/packages/mapdown-core"],
+      "options": {
+        "jestConfig": "packages/mapdown-core/jest.config.js",
+        "passWithNoTests": true
+      }
+    }
+  },
+  "tags": []
+}
