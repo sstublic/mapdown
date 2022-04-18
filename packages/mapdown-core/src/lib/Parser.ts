@@ -3,7 +3,7 @@ import { ParsedEntity } from "./ParsedEntity";
 
 const tagName = "mapdown-entity";
 const openTag = `<${tagName}`;
-const closeTag = `<${tagName}/>`;
+const closeTag = `</${tagName}>`;
 
 export function Parse(markdown: string): Array<ParsedEntity> | null {
     const items = new Array<ParsedEntity>();
@@ -20,11 +20,37 @@ export function Parse(markdown: string): Array<ParsedEntity> | null {
 }
 
 export function TryReadMetadata(markdown: string, pos: number): [Array<Property>, number] | null {
-    if (!markdown.startsWith(openTag, pos)) {
+    if (!IsLineStart(markdown, pos) || !markdown.startsWith(openTag, pos)) {
         return null;
     }
+
     pos += openTag.length;
-    return null;
+
+    const properties = new Array<Property>();
+    let prop: [Property, number] | null;
+    do
+    {
+        prop = TryReadProperty(markdown, pos);
+        if (prop != null) {
+            properties.push(prop[0]);
+            pos = prop[1];
+        }
+    } while (prop != null);
+
+    const closeCharacter = TryReadCharacter(markdown, pos, ">");
+    if (closeCharacter == null) {
+        return null;
+    }
+
+    pos = closeCharacter[1];
+    pos = SkipWhitespaces(markdown, pos);
+
+    if (!markdown.startsWith(closeTag, pos)) {
+        return null;
+    }
+
+    pos += closeTag.length;
+    return [properties, pos];
 }
 
 export function TryReadProperty(markdown: string, pos: number): [Property, number] | null {
@@ -56,7 +82,9 @@ export function TryReadPropertyName(markdown: string, pos: number): [string, num
     if (pos >= markdown.length) {
         return null;
     }
-    const matches = markdown.match(/[a-zA-Z_]+[a-zA-Z:_\-.]*/);
+    const regex = /[a-zA-Z_]+[0-9a-zA-Z:_\-.]*/y;
+    regex.lastIndex = pos;
+    const matches = regex.exec(markdown);
     if (matches == null) {
         return null
     }
@@ -105,4 +133,15 @@ export function SkipWhitespaces(markdown: string, pos: number): number {
         pos++;
     }
     return pos;
+}
+
+export function IsLineStart(markdown: string, pos: number): boolean {
+    return pos == 0 
+        || markdown[pos - 1] === "\n";
+}
+
+export function IsLineEnd(markdown: string, pos: number): boolean {
+    return pos == markdown.length - 1
+        || markdown[pos] === "\n"
+        || pos < markdown.length - 1 && markdown[pos] === "\r" && markdown[pos + 1] === "\n";
 }
