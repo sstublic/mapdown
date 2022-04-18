@@ -56,7 +56,7 @@ export function TryReadPropertyName(markdown: string, pos: number): [string, num
     if (pos >= markdown.length) {
         return null;
     }
-    const matches = markdown.match(/[a-z]+/);
+    const matches = markdown.match(/[a-zA-Z_]+[a-zA-Z:_\-.]*/);
     if (matches == null) {
         return null
     }
