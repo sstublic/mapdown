@@ -1,26 +1,65 @@
-import { Property } from "./Entity";
+import { Entity, Property } from "./Entity";
 import { ParsedEntity } from "./ParsedEntity";
 
 const tagName = "mapdown-entity";
 const openTag = `<${tagName}`;
 const closeTag = `</${tagName}>`;
 
-export function Parse(markdown: string): Array<ParsedEntity> | null {
-    const items = new Array<ParsedEntity>();
+export function Parse(input: string): Array<ParsedEntity> {
+    const entities = new Array<ParsedEntity>();
 
-    return null;
-    /*
     let pos = 0;
-
-    while (pos < markdown.length) {
-
+    while (pos < input.length) {
+        const parsedEntity = ReadEntity(input, pos);
+        entities.push(parsedEntity[0]);
+        pos = parsedEntity[1];
     }
-
-    return items;*/
+    
+    return entities;
 }
 
-export function TryReadMetadata(markdown: string, pos: number): [Array<Property>, number] | null {
-    if (!IsLineStart(markdown, pos) || !markdown.startsWith(openTag, pos)) {
+export function ReadEntity(input: string, pos: number): [ParsedEntity, number] {
+    const metadataStartPos = pos;
+
+    let metadata = TryReadMetadata(input, pos);
+    if (metadata == null) {
+        metadata = [[], pos];
+    }
+    pos = metadata[1];
+    const properties = metadata[0];
+    const contentStartPos = pos;
+
+    const content = ReadContent(input, pos);
+    pos = content[1];
+
+    const contentProp: Property = {};
+    contentProp[Entity.PropertyContent] = content[0];
+    properties.push(contentProp);
+
+    const parsedEntity: ParsedEntity = {
+        entity: new Entity(properties),
+        metadataStartPos: metadataStartPos,
+        contentStartPos: contentStartPos,
+    }
+    return [parsedEntity, pos];
+}
+
+export function ReadContent(input: string, pos: number): [string, number] {
+    let content = "";
+
+    while (pos < input.length) {
+        content += input[pos];
+        pos++;
+        if (IsMetadataStart(input, pos)) {
+            break;
+        }
+    }
+
+    return [content, pos];
+}
+
+export function TryReadMetadata(input: string, pos: number): [Array<Property>, number] | null {
+    if (!IsMetadataStart(input, pos)) {
         return null;
     }
 
@@ -30,22 +69,22 @@ export function TryReadMetadata(markdown: string, pos: number): [Array<Property>
     let prop: [Property, number] | null;
     do
     {
-        prop = TryReadProperty(markdown, pos);
+        prop = TryReadProperty(input, pos);
         if (prop != null) {
             properties.push(prop[0]);
             pos = prop[1];
         }
     } while (prop != null);
 
-    const closeCharacter = TryReadCharacter(markdown, pos, ">");
+    const closeCharacter = TryReadCharacter(input, pos, ">");
     if (closeCharacter == null) {
         return null;
     }
 
     pos = closeCharacter[1];
-    pos = SkipWhitespaces(markdown, pos);
+    pos = SkipWhitespaces(input, pos);
 
-    if (!markdown.startsWith(closeTag, pos)) {
+    if (!input.startsWith(closeTag, pos)) {
         return null;
     }
 
@@ -53,22 +92,26 @@ export function TryReadMetadata(markdown: string, pos: number): [Array<Property>
     return [properties, pos];
 }
 
-export function TryReadProperty(markdown: string, pos: number): [Property, number] | null {
-    pos = SkipWhitespaces(markdown, pos);
-    if (pos >= markdown.length) {
+export function IsMetadataStart(input: string, pos: number): boolean {
+    return IsLineStart(input, pos) && input.startsWith(openTag, pos);
+}
+
+export function TryReadProperty(input: string, pos: number): [Property, number] | null {
+    pos = SkipWhitespaces(input, pos);
+    if (pos >= input.length) {
         return null;
     }
-    const propertyName = TryReadPropertyName(markdown, pos);
-    if (propertyName == null || propertyName[1] >= markdown.length) {
+    const propertyName = TryReadPropertyName(input, pos);
+    if (propertyName == null || propertyName[1] >= input.length) {
         return null;
     }
     pos = propertyName[1];
-    const equalSign = TryReadCharacter(markdown, pos, "=");
-    if (equalSign == null || equalSign[1] >= markdown.length) {
+    const equalSign = TryReadCharacter(input, pos, "=");
+    if (equalSign == null || equalSign[1] >= input.length) {
         return null;
     }
     pos = equalSign[1];
-    const value = TryReadQuotedString(markdown, pos);
+    const value = TryReadQuotedString(input, pos);
     if (value == null) {
         return null;
     }
@@ -77,71 +120,71 @@ export function TryReadProperty(markdown: string, pos: number): [Property, numbe
     return [property, value[1]];
 }
 
-export function TryReadPropertyName(markdown: string, pos: number): [string, number] | null {
-    pos = SkipWhitespaces(markdown, pos);
-    if (pos >= markdown.length) {
+export function TryReadPropertyName(input: string, pos: number): [string, number] | null {
+    pos = SkipWhitespaces(input, pos);
+    if (pos >= input.length) {
         return null;
     }
     const regex = /[a-zA-Z_]+[0-9a-zA-Z:_\-.]*/y;
     regex.lastIndex = pos;
-    const matches = regex.exec(markdown);
+    const matches = regex.exec(input);
     if (matches == null) {
         return null
     }
     return [matches[0], pos + matches[0].length];
 }
 
-export function TryReadCharacter(markdown: string, pos: number, allowedCharacters: string): [string, number] | null {
-    pos = SkipWhitespaces(markdown, pos);
-    if (pos >= markdown.length) {
+export function TryReadCharacter(input: string, pos: number, allowedCharacters: string): [string, number] | null {
+    pos = SkipWhitespaces(input, pos);
+    if (pos >= input.length) {
         return null;
     }
-    const index = allowedCharacters.indexOf(markdown[pos]);
+    const index = allowedCharacters.indexOf(input[pos]);
     if (index == -1) {
         return null;
     }
     return [allowedCharacters[index], pos + 1];
 }
 
-export function TryReadQuotedString(markdown: string, pos: number): [string, number] | null {
-    pos = SkipWhitespaces(markdown, pos);
-    if (pos >= markdown.length) {
+export function TryReadQuotedString(input: string, pos: number): [string, number] | null {
+    pos = SkipWhitespaces(input, pos);
+    if (pos >= input.length) {
         return null;
     }
-    const quote = TryReadCharacter(markdown, pos, "\"");
+    const quote = TryReadCharacter(input, pos, "\"");
     if (quote == null) {
         return null;
     }
     pos = quote[1];
     let quotedString = "";
-    while (pos < markdown.length && markdown[pos] != "\"") {
-        quotedString += markdown[pos];
+    while (pos < input.length && input[pos] != "\"") {
+        quotedString += input[pos];
         pos++;
     }
-    if (pos >= markdown.length) {
+    if (pos >= input.length) {
         return null;
     }
-    if (markdown[pos] != "\"") {
+    if (input[pos] != "\"") {
         return null;
     }
     return [quotedString, pos + 1];
 }
 
 const whitespaceChars = " \r\n\t";
-export function SkipWhitespaces(markdown: string, pos: number): number {
-    while (whitespaceChars.includes(markdown[pos])) {
+export function SkipWhitespaces(input: string, pos: number): number {
+    while (whitespaceChars.includes(input[pos])) {
         pos++;
     }
     return pos;
 }
 
-export function IsLineStart(markdown: string, pos: number): boolean {
+export function IsLineStart(input: string, pos: number): boolean {
     return pos == 0 
-        || markdown[pos - 1] === "\n";
+        || input[pos - 1] === "\n";
 }
 
-export function IsLineEnd(markdown: string, pos: number): boolean {
-    return pos == markdown.length - 1
-        || markdown[pos] === "\n"
-        || pos < markdown.length - 1 && markdown[pos] === "\r" && markdown[pos + 1] === "\n";
+export function IsLineEnd(input: string, pos: number): boolean {
+    return pos == input.length - 1
+        || input[pos] === "\n"
+        || pos < input.length - 1 && input[pos] === "\r" && input[pos + 1] === "\n";
 }
