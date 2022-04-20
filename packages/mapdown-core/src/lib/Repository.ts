@@ -3,7 +3,7 @@ import { IMapDownSource } from "./IMapDownSource";
 import { ParsedEntity } from "./ParsedEntity";
 import { Parse } from "./Parser";
 
-class Repository {
+export class Repository {
     private parsedEntities: ParsedEntity[] = [];
     private changeToken: object | null = null;
 
@@ -16,7 +16,11 @@ class Repository {
         return this.parsedEntities.map(a => a.entity);
     }
 
-    updateEntity(entity: Entity): Promise<void> {
+    async updateEntity(entity: Entity): Promise<void> {
+        // force hasChanged check?
+        await this.updateEntities();
+        // some update entity logic
+        await this.mapDownSource.write("");
         return new Promise<void>((resolve, reject) => {
             resolve();
         });
