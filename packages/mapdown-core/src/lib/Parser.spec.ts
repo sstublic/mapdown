@@ -6,44 +6,44 @@ describe("Parse", () => {
         const entities = Parser.Parse("<mapdown-entity id=\"1\"></mapdown-entity>ble\n<mapdown-entity id=\"2\" misc=\" \"></mapdown-entity>ble2\nbla2\n<mapdown-entity id=\"3\"></mapdown-entity>");
         expect(entities).toHaveLength(3);
         
-        expect(entities[1].entity.Properties).toHaveLength(3);
-        expect(entities[1].entity.Properties[0][Entity.PropertyId]).toEqual("2");
-        expect(entities[1].entity.Properties[1]["misc"]).toEqual(" ");
-        expect(entities[1].entity.Properties[2][Entity.PropertyContent]).toEqual("ble2\nbla2\n");
+        expect(entities[1].entity.propertyCount()).toEqual(3);
+        expect(entities[1].entity.getId()).toEqual("2");
+        expect(entities[1].entity.findFirst("misc")).toEqual(" ");
+        expect(entities[1].entity.getContent()).toEqual("ble2\nbla2\n");
 
-        expect(entities[2].entity.Properties).toHaveLength(2);
-        expect(entities[2].entity.Properties[0][Entity.PropertyId]).toEqual("3");
-        expect(entities[2].entity.Properties[1][Entity.PropertyContent]).toEqual("");
+        expect(entities[2].entity.propertyCount()).toEqual(2);
+        expect(entities[2].entity.getId()).toEqual("3");
+        expect(entities[2].entity.getContent()).toEqual("");
     });
 });
 
 describe("Entity", () => {
     it("simple", () => {
         const entity = Parser.ReadEntity("<mapdown-entity></mapdown-entity>ble", 0);
-        expect(entity[0].entity.Properties).toHaveLength(1);
-        expect(entity[0].entity.Properties[0][Entity.PropertyContent]).toEqual("ble");
+        expect(entity[0].entity.propertyCount()).toEqual(1);
+        expect(entity[0].entity.getContent()).toEqual("ble");
     });
     it("incorrectMetadata", () => {
         const entity = Parser.ReadEntity("<mapdown-entity</mapdown-entity>ble", 0);
-        expect(entity[0].entity.Properties).toHaveLength(1);
-        expect(entity[0].entity.Properties[0][Entity.PropertyContent]).toEqual("<mapdown-entity</mapdown-entity>ble");
+        expect(entity[0].entity.propertyCount()).toEqual(1);
+        expect(entity[0].entity.getContent()).toEqual("<mapdown-entity</mapdown-entity>ble");
     });
     it("endDetection", () => {
         const entity = Parser.ReadEntity("<mapdown-entity></mapdown-entity>ble\n<mapdown-entity></mapdown-entity>ble2", 0);
-        expect(entity[0].entity.Properties).toHaveLength(1);
-        expect(entity[0].entity.Properties[0][Entity.PropertyContent]).toEqual("ble\n");
+        expect(entity[0].entity.propertyCount()).toEqual(1);
+        expect(entity[0].entity.getContent()).toEqual("ble\n");
     });
     it("endDetection2", () => {
         const entity = Parser.ReadEntity("<mapdown-entity></mapdown-entity>ble\r\n<mapdown-entity></mapdown-entity>ble2", 0);
-        expect(entity[0].entity.Properties).toHaveLength(1);
-        expect(entity[0].entity.Properties[0][Entity.PropertyContent]).toEqual("ble\r\n");
+        expect(entity[0].entity.propertyCount()).toEqual(1);
+        expect(entity[0].entity.getContent()).toEqual("ble\r\n");
     });
     it("withProps", () => {
         const entity = Parser.ReadEntity("<mapdown-entity id=\"1\" prop2=\"val2\"></mapdown-entity>ble", 0);
-        expect(entity[0].entity.Properties).toHaveLength(3);
-        expect(entity[0].entity.Properties[0][Entity.PropertyId]).toEqual("1");
-        expect(entity[0].entity.Properties[1]["prop2"]).toEqual("val2");
-        expect(entity[0].entity.Properties[2][Entity.PropertyContent]).toEqual("ble");
+        expect(entity[0].entity.propertyCount()).toEqual(3);
+        expect(entity[0].entity.getProperty(0)).toEqual([Entity.PropertyId, "1"]);
+        expect(entity[0].entity.getProperty(1)).toEqual(["prop2", "val2"]);
+        expect(entity[0].entity.getProperty(2)).toEqual([Entity.PropertyContent, "ble"]);
     });
 });
 
@@ -68,7 +68,8 @@ describe("Metadata", () => {
     });
     it("singleProperty", () => {
         const meta = Parser.TryReadMetadata("<mapdown-entity prop1=\"val1\"></mapdown-entity>", 0);
-        expect(meta?.[0]).toEqual([{ prop1: "val1" }]);
+        console.debug(meta?.[0]);
+        expect(meta?.[0]).toEqual([["prop1", "val1" ]]);
     });
     it("invalidProperty", () => {
         const meta = Parser.TryReadMetadata("<mapdown-entity prop1=\"val1></mapdown-entity>", 0);
@@ -80,11 +81,11 @@ describe("Metadata", () => {
     });
     it("twoProperties", () => {
         const meta = Parser.TryReadMetadata("<mapdown-entity prop1=\"val1\" prop2=\"val2\"></mapdown-entity>", 0);
-        expect(meta?.[0]).toEqual([{ prop1: "val1" }, { prop2: "val2" }]);
+        expect(meta?.[0]).toEqual([ ["prop1", "val1"], ["prop2", "val2"] ]);
     });
     it("twoPropertiesWhitespaces", () => {
         const meta = Parser.TryReadMetadata("<mapdown-entity \t \r\n prop1=\"val1\" \r\n   \tprop2=\"val2\">\t</mapdown-entity>", 0);
-        expect(meta?.[0]).toEqual([{ prop1: "val1" }, { prop2: "val2" }]);
+        expect(meta?.[0]).toEqual([ ["prop1", "val1"], ["prop2", "val2"] ]);
     });
 });
 
@@ -127,14 +128,14 @@ describe("Property", () => {
     });
     it("nameAlphaNum", () => {
         const prop = Parser.TryReadProperty("a1B2c3=\"ble\"", 0);
-        expect(prop?.[0]).toMatchObject({"a1B2c3": "ble"});
+        expect(prop?.[0]).toEqual(["a1B2c3", "ble"]);
     });
     it("nameExtendedChars", () => {
         const prop = Parser.TryReadProperty("a:B.c_E-f=\"ble\"", 0);
-        expect(prop?.[0]).toMatchObject({"a:B.c_E-f": "ble"});
+        expect(prop?.[0]).toEqual(["a:B.c_E-f", "ble"]);
     });
     it("manyWhitespaces", () => {
         const prop = Parser.TryReadProperty("  \t  a \t \r =\t \n\r  \t  \"ble\"   \t\n\r", 0);
-        expect(prop?.[0]).toMatchObject({"a": "ble"});
+        expect(prop?.[0]).toEqual(["a", "ble"]);
     });
 });

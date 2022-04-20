@@ -32,12 +32,11 @@ export function ReadEntity(input: string, pos: number): [ParsedEntity, number] {
     const content = ReadContent(input, pos);
     pos = content[1];
 
-    const contentProp: Property = {};
-    contentProp[Entity.PropertyContent] = content[0];
-    properties.push(contentProp);
+    const entity = new Entity(properties);
+    entity.addProperty(Entity.PropertyContent, content[0]);
 
     const parsedEntity: ParsedEntity = {
-        entity: new Entity(properties),
+        entity: entity,
         metadataStartPos: metadataStartPos,
         contentStartPos: contentStartPos,
     }
@@ -115,9 +114,7 @@ export function TryReadProperty(input: string, pos: number): [Property, number] 
     if (value == null) {
         return null;
     }
-    const property = {} as Property;
-    property[propertyName[0]] = value[0];
-    return [property, value[1]];
+    return [[propertyName[0], value[0]], value[1]];
 }
 
 export function TryReadPropertyName(input: string, pos: number): [string, number] | null {
